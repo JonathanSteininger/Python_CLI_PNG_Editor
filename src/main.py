@@ -70,11 +70,11 @@ class chunk():
     def setCRC(self, crc: bytearray):
         self.crc = crc
 
-
 class buffer():
     def __init__(self, filePath: str):
         checkFileExists(filePath)
         self.buffer = bytearray(open(filePath, "rb").read())
+        checkPNGHeader(self.buffer)
         self.pos = 8
 
     def getChunk(self) -> chunk:
@@ -95,14 +95,15 @@ if (len(sys.argv) < argsRequired):
     raise Exception(f"Missing inputs. required: {argsRequired}")
 
 launchLocation = str(sys.argv[0])
-fileArg1 = str(sys.argv[1])
+files = []
+for i in range(1, len(sys.argv)):
+    files.append(buffer(str(sys.argv[i])))
 
-file1 = buffer(fileArg1)
-checkPNGHeader(file1.buffer)
-
-counter = 0
-while(file1.pos < len(file1.buffer)):
-    counter += 1
-    _chunk = file1.getChunk()
-    print(f"Chunk{counter} ->  Type: {_chunk.type}. Length: {_chunk.length}. CRC: {_chunk.crc}")
-print("done!")
+for i in range(len(files)):
+    counter = 0
+    print(f"\n############## Start({sys.argv[1 + i]}) ##############")
+    while(files[i].pos < len(files[i].buffer)):
+        counter += 1
+        _chunk = files[i].getChunk()
+        print(f"Chunk{counter} ->  Type: {_chunk.type}. Length: {_chunk.length}. CRC: {_chunk.crc}")
+    print("############## DONE ##############\n")
