@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 
 
 def checkFileExists(filePath: str):
@@ -15,19 +16,35 @@ def validateByteChar(byteBuffer: bytearray, bufferIndex: int, charComparison: ch
     return True
 
 
-def validateByte(byteBuffer: bytearray, bufferIndex: int, byteComparison: bytes) -> bool:
-    if (byteBuffer[bufferIndex] != byteComparison[0]):
-        print("Byte invalid. ByteIndex: ", bufferIndex, "Checked Byte: ",
-              byteBuffer[bufferIndex], "Comparison Byte: ", byteComparison[0])
-        return False
-    return True
+def returnCharCode(input) -> int:
+    if isinstance(input, str):
+        if (len(input) <= 0):
+            raise Exception("Input string is empty")
+        return ord(input[0])
+    if isinstance(input, bytes):
+        return input[0]
+    if isinstance(input, int):
+        return input
+    if isinstance(input, float):
+        return int(input)
+    raise TypeError("input not recognised")
+
+
+def validateByte(byteBuffer: bytearray, bufferIndex: int, comparison) -> bool:
+    inInt = byteBuffer[bufferIndex]
+    compInt = returnCharCode(comparison)
+    if (inInt != compInt):
+        raise Exception(
+            f"Byte Failed Validation. BNUM: {bufferIndex}. in: {inInt}. comp: {compInt}")
+
+
+HEADER_PNG_BYTES = [b'\x89', 'P', 'N', 'G', '\r', '\n', b'\x1a', '\n']
 
 
 def checkPNGHeader(buffer: bytearray) -> bool:
-    output = True
-    output = output and validateByte(buffer, 0, b'\x89')
-    output = output and validateByteChar(buffer, 1, 'P')
-    return output
+    for counter in range(len(HEADER_PNG_BYTES)):
+        validateByte(buffer, counter, HEADER_PNG_BYTES[counter])
+    return True
 
 
 argsRequired = 2
@@ -43,5 +60,3 @@ checkFileExists(fileArg1)
 buffer1 = bytearray(open(fileArg1, "rb").read())
 out = checkPNGHeader(buffer1)
 print("header: ", out)
-
-
