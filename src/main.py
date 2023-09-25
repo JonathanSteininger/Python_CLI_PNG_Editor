@@ -7,15 +7,6 @@ def checkFileExists(filePath: str):
     if (not os.path.isfile(filePath)):
         raise Exception(f"File error: {filePath}")
 
-
-def validateByteChar(byteBuffer: bytearray, bufferIndex: int, charComparison: chr) -> bool:
-    if (chr(byteBuffer[bufferIndex]) != charComparison):
-        print("Byte invalid. ByteIndex: ", bufferIndex, "Checked Byte: ",
-              chr(byteBuffer[bufferIndex]), "Comparison Byte: ", charComparison)
-        return False
-    return True
-
-
 def returnCharCode(input) -> int:
     if isinstance(input, str):
         if (len(input) <= 0):
@@ -47,16 +38,71 @@ def checkPNGHeader(buffer: bytearray) -> bool:
     return True
 
 
+
+
+def GetInt4Chunk(buffer: bytearray, position: int) -> int:
+    return int.from_bytes(buffer[position:position + 4], 'big')
+
+
+def stringBinary(buffer: bytearray, startIndex: int, length: int) -> str:
+    stringOut = ""
+    for i in range(length):
+        stringOut += chr(buffer[startIndex + i])
+    return stringOut
+
+
+class chunk():
+    def __init__(self):
+        self.length = 0
+        self.type = "null"
+        self.data = bytearray()
+        self.crc = 0
+
+    def setLength(self, length: int):
+        self.length = length
+
+    def setType(self, type: str):
+        self.type = type
+
+    def setData(self, data: bytearray):
+        self.data = data
+
+    def setCRC(self, crc: bytearray):
+        self.crc = crc
+
+
+class buffer():
+    def __init__(self, filePath: str):
+        checkFileExists(filePath)
+        self.buffer = bytearray(open(filePath, "rb").read())
+        self.pos = 8
+
+    def getChunk(self) -> chunk:
+        chunkOut = chunk()
+        chunkOut.setLength(GetInt4Chunk(self.buffer, self.pos))
+        self.pos += 4
+        chunkOut.setType(stringBinary(self.buffer, self.pos, 4))
+        self.pos += 4
+        chunkOut.setData(self.buffer[self.pos : self.pos + chunkOut.length])
+        self.pos += chunkOut.length
+        chunkOut.setCRC(self.buffer[self.pos : self.pos + 4])
+        self.pos += 4
+        return chunkOut
+
+
 argsRequired = 2
 if (len(sys.argv) < argsRequired):
     raise Exception(f"Missing inputs. required: {argsRequired}")
 
 launchLocation = str(sys.argv[0])
 fileArg1 = str(sys.argv[1])
-# fileArg2 = str(sys.argv[2])
 
-checkFileExists(fileArg1)
+file1 = buffer(fileArg1)
+checkPNGHeader(file1.buffer)
 
-buffer1 = bytearray(open(fileArg1, "rb").read())
-out = checkPNGHeader(buffer1)
-print("header: ", out)
+counter = 0
+while(file1.pos < len(file1.buffer)):
+    counter += 1
+    _chunk = file1.getChunk()
+    print(f"Chunk{counter} ->  Type: {_chunk.type}. Length: {_chunk.length}. CRC: {_chunk.crc}")
+print("done!")
