@@ -1,5 +1,6 @@
 from typing import List
 import os
+from crc import CRC32 as crc
 
 
 def checkFileExists(filePath: str):
@@ -76,6 +77,7 @@ class buffer():
     def getChunk(self) -> chunk:
         chunkOut = chunk()
         byteJumps = 4
+        startPos = self.pos
         chunkOut.setLength(getIntFromByte(self.buffer, self.pos, byteJumps))
         self.pos += byteJumps
         chunkOut.setType(stringBinary(self.buffer, self.pos, byteJumps))
@@ -84,6 +86,9 @@ class buffer():
         self.pos += chunkOut.length
         chunkOut.setCRC(self.buffer[self.pos: self.pos + byteJumps])
         self.pos += byteJumps
+        if(chunkOut.type == "IHDR"):
+            print("beginingLength = " + str(self.pos - startPos))
+            print(self.buffer[startPos:self.pos])
         return chunkOut
 
 
@@ -117,13 +122,13 @@ class byteStorage():
     def setByte(self, bytes: bytes) -> None:
         if (len(bytes) < self.size):
             return
-        self.value = int.from_bytes(bytes[:self.size])
+        self.value = int.from_bytes(bytes[:self.size], "big")
 
     def getByte(self) -> bytes:
-        return self.value.to_bytes(self.size, "big", self.signed)
+        return self.value.to_bytes(self.size, "big")
 
 
-class IHDR():
+class ihdr():
     def __init__(self, chunk: chunk) -> None:
         self.chunk = chunk
         self.chunkType = b'IHDR'
@@ -134,6 +139,7 @@ class IHDR():
         self.compressionMethod = byteStorage(1)
         self.filterMethod = byteStorage(1)
         self.interlaceMethod = byteStorage(1)
+        self.readChunk()
 
     def readChunk(self) -> None:
         pos = 0
@@ -156,25 +162,29 @@ class IHDR():
     def writeChunk(self) -> bytes:
         bytesOut = bytearray()
         data = self.writeData()
-        dataLength = len(data).to_bytes(4, "big", False)
-        bytesOut.append(dataLength)
-        bytesOut.append(self.chunkType)
-        bytesOut.append(data)
-        bytesOut.append(self.writeCRC())
-        return bytes(bytesOut)
+        print(len(data))
+        dataLength = len(data).to_bytes(4, "big")
+        bytesOut.extend(dataLength)
 
-    def writeCRC(self) -> bytes:
-        bytesOut = bytearray()
-        # need to finish this
+        bytesOut.extend(self.chunkType)
+        bytesOut.extend(data)
+
+        crcBytes = bytearray(self.chunkType)
+        crcBytes.extend(data)
+        crcOut = crc(bytes(crcBytes))
+        print(crcOut)
+        bytesOut.extend(crcOut)
+        print("lenOut = " + str(len(bytesOut)))
+        print(bytesOut)
         return bytes(bytesOut)
 
     def writeData(self) -> bytes:
         bytesOut = bytearray()
-        bytesOut.append(self.width.getByte())
-        bytesOut.append(self.height.getByte())
-        bytesOut.append(self.bitDepth.getByte())
-        bytesOut.append(self.colorType.getByte())
-        bytesOut.append(self.compressionMethod.getByte())
-        bytesOut.append(self.filterMethod.getByte())
-        bytesOut.append(self.interlaceMethod.getByte())
+        bytesOut.extend(self.width.getByte())
+        bytesOut.extend(self.height.getByte())
+        bytesOut.extend(self.bitDepth.getByte())
+        bytesOut.extend(self.colorType.getByte())
+        bytesOut.extend(self.compressionMethod.getByte())
+        bytesOut.extend(self.filterMethod.getByte())
+        bytesOut.extend(self.interlaceMethod.getByte())
         return bytes(bytesOut)
